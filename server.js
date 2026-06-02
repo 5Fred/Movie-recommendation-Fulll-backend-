@@ -1,10 +1,13 @@
+require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const express = require('express');
 const axios = require('axios');
 const sqlite3 = require('sqlite3').verbose(); 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const bcrypt = require('bcrypt');
+
+
 
 // Middleware to parse JSON bodies
 app.use(express.json());
@@ -20,7 +23,7 @@ const authenticateToken = (req, res, next) => {
     }
 
     // Verify the token signature using our secret key
-    jwt.verify(token, 'MY_SUPER_SECRET_KEY', (err, user) => {
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
         if (err) {
             return res.status(403).json({ error: "Invalid or expired token." });
         }
@@ -143,11 +146,10 @@ app.post('/api/login', (req, res) => {
 
         // GENERATE JWT TOKEN: Payload contains user ID, using a secret signature key
         const token = jwt.sign(
-            { id: user.id, username: user.username }, 
-            'MY_SUPER_SECRET_KEY', 
-            { expiresIn: '1h' } // Token expires automatically in 1 hour
-        );
-
+    { id: user.id, username: user.username }, 
+    process.env.JWT_SECRET, 
+    { expiresIn: '1h' }
+);
         // Send the token back to the client
         res.json({
             message: "Login successful!",
