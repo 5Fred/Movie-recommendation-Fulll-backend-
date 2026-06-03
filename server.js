@@ -104,13 +104,32 @@ app.post('/api/favorites', authenticateToken, (req, res) => {
 
 // 4. GET Route: Fetch ONLY the logged-in user's favorites
 app.get('/api/favorites', authenticateToken, (req, res) => {
-    const userId = req.user.id; // Extracted directly from the validated JWT token
-
+    const userId = req.user.id; 
     const sql = `SELECT * FROM favorites WHERE user_id = ?`;
-    
+  
     db.all(sql, [userId], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(rows);
+    });
+});
+
+// 4.5 DELETE Route: Remove a specific movie from the logged-in user's favorites
+app.delete('/api/favorites/:id', authenticateToken, (req, res) => {
+    const movieId = req.params.id; // Extracts the movie ID from the URL path
+    const userId = req.user.id;    // Extracts user ID from the validated token
+
+    // SQL query ensuring a user can only delete their own data
+    const sql = `DELETE FROM favorites WHERE id = ? AND user_id = ?`;
+
+    db.run(sql, [movieId, userId], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        
+        // checks if any rows were actually affected
+        if (this.changes === 0) {
+            return res.status(404).json({ error: "Movie not found or unauthorized to delete" });
+        }
+
+        res.json({ message: "Movie removed from favorites successfully!" });
     });
 });
 
