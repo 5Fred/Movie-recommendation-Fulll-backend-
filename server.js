@@ -41,7 +41,7 @@ const db = new sqlite3.Database('./movies.db', (err) => {
     } else {
         console.log("Connected to movies.db file successfully.");
         
-        // Force create the users table right here if it doesn't exist
+        // 1. Create Users Table
         db.run(`
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -50,11 +50,28 @@ const db = new sqlite3.Database('./movies.db', (err) => {
             )
         `, (tableErr) => {
             if (tableErr) console.error("Error auto-creating users table:", tableErr.message);
-            else console.log("Database verification: 'users' table is fully ready.");
+            else {
+                console.log("Database verification: 'users' table is fully ready.");
+                
+                // 2. Create Favorites Table (Now linked to user_id via FOREIGN KEY)
+                db.run(`
+                    CREATE TABLE IF NOT EXISTS favorites (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        title TEXT NOT NULL,
+                        year TEXT,
+                        summary TEXT,
+                        rating REAL,
+                        FOREIGN KEY (user_id) REFERENCES users (id)
+                    )
+                `, (favErr) => {
+                    if (favErr) console.error("Error auto-creating favorites table:", favErr.message);
+                    else console.log("Database verification: 'favorites' table is fully ready.");
+                });
+            }
         });
     }
 });
-
 // 1. Home Route
 app.get('/', (req, res) => {
     res.send('Welcome to the FlickPick Movie Recommendation API!');
@@ -72,21 +89,26 @@ app.get('/api/search', async (req, res) => {
     }
 });
 
-// 3. POST Route: Protected with authenticateToken
+// 3. POST Route: Save a movie linked to the logged-in user
 app.post('/api/favorites', authenticateToken, (req, res) => {
     const { title, year, summary, rating } = req.body;
-    const sql = `INSERT INTO favorites (title, year, summary, rating) VALUES (?, ?, ?, ?)`;
+    const userId = req.user.id; // Extracted directly from the validated JWT token
+
+    const sql = `INSERT INTO favorites (user_id, title, year, summary, rating) VALUES (?, ?, ?, ?, ?)`;
     
-    db.run(sql, [title, year, summary, rating], function(err) {
+    db.run(sql, [userId, title, year, summary, rating], function(err) {
         if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: "Movie added to favorites successfully!", id: this.lastID });
+        res.json({ message: "Movie added to your favorites successfully!", id: this.lastID });
     });
 });
 
-// 4. GET Route: Protected with authenticateToken
+// 4. GET Route: Fetch ONLY the logged-in user's favorites
 app.get('/api/favorites', authenticateToken, (req, res) => {
-    const sql = `SELECT * FROM favorites`;
-    db.all(sql, [], (err, rows) => {
+    const userId = req.user.id; // Extracted directly from the validated JWT token
+
+    const sql = `SELECT * FROM favorites WHERE user_id = ?`;
+    
+    db.all(sql, [userId], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(rows);
     });
