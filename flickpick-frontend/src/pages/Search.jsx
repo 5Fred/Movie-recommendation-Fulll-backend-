@@ -44,7 +44,8 @@ function Search() {
       title: show.name,
       year: show.premiered ? show.premiered.split('-')[0] : 'N/A',
       summary: show.summary ? show.summary.replace(/<[^>]*>/g, '') : 'No summary provided.', // Strips HTML tags safely
-      rating: show.rating?.average || 0
+      rating: show.rating?.average || 0,
+      image: show.image?.medium || show.image?.original || '' // SOLVED FOR IMAGE: Extracting the image poster url strings cleanly
     };
 
     try {

@@ -5,8 +5,10 @@ function Favorites() {
   const [favorites, setFavorites] = useState([]);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  
+  // State to manage the video modal pop-up
+  const [activeTrailerUrl, setActiveTrailerUrl] = useState(null);
 
-  // Fetch favorites when the page loads
   const fetchFavorites = async () => {
     const token = localStorage.getItem('flickpick_token');
     if (!token) {
@@ -28,7 +30,6 @@ function Favorites() {
     fetchFavorites();
   }, []);
 
-  // Handle removing a movie from favorites
   const handleDelete = async (id) => {
     const token = localStorage.getItem('flickpick_token');
     try {
@@ -36,11 +37,24 @@ function Favorites() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMessage('Movie removed successfully!');
-      // Refresh the list immediately in the UI
       setFavorites(favorites.filter(movie => movie.id !== id));
     } catch (err) {
       setError('Failed to remove the movie.');
     }
+  };
+  
+
+  // Helper function to open the official trailer directly in a new browser tab
+  const openTrailer = (title) => {
+    const searchQuery = encodeURIComponent(title + ' official trailer');
+    const youtubeUrl = `https://www.youtube.com/results?search_query=${searchQuery}`;
+    
+    // Opens a secure, clean target tab instantly
+    window.open(youtubeUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const closeTrailer = () => {
+    setActiveTrailerUrl(null);
   };
 
   return (
@@ -61,14 +75,50 @@ function Favorites() {
                 <p style={{ color: '#ff9800', fontWeight: 'bold' }}>⭐ {movie.rating || 'N/A'}</p>
                 <p style={{ fontSize: '13px', color: '#444' }}>{movie.summary}</p>
               </div>
-              <button 
-                onClick={() => handleDelete(movie.id)}
-                style={{ width: '100%', padding: '8px 0', backgroundColor: '#DC3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', marginTop: '10px' }}
-              >
-                🗑️ Delete Item
-              </button>
+              
+              <div style={{ marginTop: '15px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <button 
+                  onClick={() => openTrailer(movie.title)}
+                  style={{ width: '100%', padding: '8px 0', backgroundColor: '#28A745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                >
+                  🎬 Watch Trailer
+                </button>
+                <button 
+                  onClick={() => handleDelete(movie.id)}
+                  style={{ width: '100%', padding: '8px 0', backgroundColor: '#DC3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                >
+                  🗑️ Delete Item
+                </button>
+              </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* VIDEO PLAYER POPUP MODAL OVERLAY */}
+      {activeTrailerUrl && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+          backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
+        }}>
+          <div style={{ backgroundColor: '#111', padding: '10px', borderRadius: '8px', width: '90%', maxWidth: '640px', position: 'relative' }}>
+            <button 
+              onClick={closeTrailer}
+              style={{ position: 'absolute', top: '-35px', right: '0px', background: 'none', border: 'none', color: 'white', fontSize: '24px', cursor: 'pointer' }}
+            >
+              ✕ Close
+            </button>
+            <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden' }}>
+              <iframe
+                src={activeTrailerUrl}
+                title="Trailer Player"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', borderRadius: '4px' }}
+              ></iframe>
+            </div>
+          </div>
         </div>
       )}
     </div>
